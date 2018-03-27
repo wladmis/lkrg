@@ -62,6 +62,7 @@ typedef struct _p_lkrg_global_ctrl_structure {
    unsigned int p_block_modules;
    unsigned int p_hide_module;
    unsigned int p_clean_message;
+   unsigned int p_random_events;
 
 } p_lkrg_global_ctrl_struct;
 
@@ -86,5 +87,6 @@ int p_kmod_init(void);
 int p_kmod_hash(unsigned int *p_module_list_cnt_arg, p_module_list_mem **p_mlm_tmp,
                 unsigned int *p_module_kobj_cnt_arg, p_module_kobj_mem **p_mkm_tmp);
 void p_deregister_module_notifier(void);
+void p_register_module_notifier(void);
 
 #endif

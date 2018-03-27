@@ -219,6 +219,12 @@ void p_check_integrity(struct work_struct *p_work) {
    mutex_unlock(p_kernfs_mutex);
 #endif
 
+   p_text_section_lock();
+   /* First, we need to snapshot an entire .text */
+   *((char *)p_db.kernel_stext_snapshot + p_db.kernel_stext.p_size) = 0x0;
+   memcpy(p_db.kernel_stext_snapshot,p_db.kernel_stext.p_addr,p_db.kernel_stext.p_size);
+   p_text_section_unlock();
+
    /* Find information about current CPUs in the system */
    p_get_cpus(&p_tmp_cpu_info);
    if (p_cmp_cpus(&p_db.p_cpu,&p_tmp_cpu_info)) {
@@ -270,7 +276,6 @@ void p_check_integrity(struct work_struct *p_work) {
    */
    on_each_cpu(p_dump_IDT_MSR_CRx,p_tmp_cpus,true);
 
-   put_online_cpus();
 
    /*
     * OK, so now get the same information for currently locked core!
@@ -278,9 +283,11 @@ void p_check_integrity(struct work_struct *p_work) {
 //   p_dump_IDT_MSR_CRx(p_tmp_cpus); // no return value
 
    /* Now we are safe to disable IRQs on current core */
-   spin_lock_irqsave(&p_db_lock,p_db_flags);
 
    p_tmp_hash = hash_from_CPU_data(p_tmp_cpus);
+   put_online_cpus();
+
+   spin_lock_irqsave(&p_db_lock,p_db_flags);
 
    if (p_db.p_IDT_MSR_CRx_hashes != p_tmp_hash) {
       /* I'm hacked! ;( */
@@ -333,13 +340,14 @@ void p_check_integrity(struct work_struct *p_work) {
     * Checking memory block:
     * "_stext"
     */
-   p_tmp_hash = p_lkrg_fast_hash((unsigned char *)p_db.kernel_stext.p_addr,
+
+   p_tmp_hash = p_lkrg_fast_hash((unsigned char *)p_db.kernel_stext_snapshot,
                                  (unsigned int)p_db.kernel_stext.p_size);
 
    if (p_db.kernel_stext.p_hash != p_tmp_hash) {
 
       /* "whitelisted" self-modifications? tracepoints? DO_ONCE()? */
-      if ( (p_cmp_bytes((char *)p_db.kernel_stext.p_addr,
+      if ( (p_cmp_bytes((char *)p_db.kernel_stext_snapshot,
                         (char *)p_db.kernel_stext_copy.p_addr,
                         (unsigned long)p_db.kernel_stext.p_size)) == -1) {
 
@@ -347,14 +355,19 @@ void p_check_integrity(struct work_struct *p_work) {
          p_print_log(P_LKRG_CRIT,
                 "ALERT !!! _STEXT MEMORY BLOCK HASH IS DIFFERENT - it is [0x%llx] and should be [0x%llx] !!!\n",
                                                                p_tmp_hash,p_db.kernel_stext.p_hash);
+         p_db.kernel_stext_copy.p_hash = p_lkrg_fast_hash((unsigned char *)p_db.kernel_stext_copy.p_addr,
+                                                          (unsigned int)p_db.kernel_stext_copy.p_size);
          p_hack_check++;
       } else {
-#ifdef P_LKRG_DEBUG
          p_print_log(P_LKRG_WARN,
              "Whitelisted legit self-modification detected! "
-             "Recalculating internal kernel core .text section hash...\n");
-#endif
-         p_db.kernel_stext.p_hash = p_tmp_hash;
+             "Recalculating internal kernel core .text section hash\n");
+
+         p_db.kernel_stext.p_hash = p_tmp_hash; //<- might be modified during whitelisting algorithm
+/*
+         p_db.kernel_stext.p_hash = p_lkrg_fast_hash((unsigned char *)p_db.kernel_stext_snapshot,
+                                                     (unsigned int)p_db.kernel_stext.p_size);
+*/
          p_db.kernel_stext_copy.p_hash = p_lkrg_fast_hash((unsigned char *)p_db.kernel_stext_copy.p_addr,
                                                           (unsigned int)p_db.kernel_stext_copy.p_size);
       }

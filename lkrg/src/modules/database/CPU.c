@@ -177,6 +177,7 @@ int p_cpu_online_action(unsigned int p_cpu) {
    mutex_lock(p_kernfs_mutex);
 #endif
 
+   p_text_section_lock();
    spin_lock(&p_db_lock);
 
    smp_call_function_single(p_cpu,p_dump_IDT_MSR_CRx,p_db.p_IDT_MSR_CRx_array,true);
@@ -197,7 +198,7 @@ int p_cpu_online_action(unsigned int p_cpu) {
          p_print_log(P_LKRG_CRIT,
             "CPU ONLINE ERROR: CANNOT GET HASH FROM EXCEPTION TABLE!\n");
       }
-      if (hash_from_kernel_stext() != P_LKRG_SUCCESS) {
+      if (hash_from_kernel_stext(0) != P_LKRG_SUCCESS) {
          p_print_log(P_LKRG_CRIT,
             "CPU ONLINE ERROR: CANNOT GET HASH FROM _STEXT!\n");
       }
@@ -235,6 +236,7 @@ int p_cpu_online_action(unsigned int p_cpu) {
    /* God mode off ;) */
 //   spin_unlock_irqrestore(&p_db_lock,p_db_flags);
    spin_unlock(&p_db_lock);
+   p_text_section_unlock();
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
    /* unlock KOBJ activities */
    mutex_unlock(p_kernfs_mutex);
@@ -266,6 +268,7 @@ int p_cpu_dead_action(unsigned int p_cpu) {
    mutex_lock(p_kernfs_mutex);
 #endif
 
+   p_text_section_lock();
    spin_lock(&p_db_lock);
 
    p_db.p_IDT_MSR_CRx_array[p_cpu].p_cpu_online = P_CPU_OFFLINE;
@@ -294,7 +297,7 @@ int p_cpu_dead_action(unsigned int p_cpu) {
          p_print_log(P_LKRG_CRIT,
             "CPU OFFLINE ERROR: CANNOT GET HASH FROM EXCEPTION TABLE!\n");
       }
-      if (hash_from_kernel_stext() != P_LKRG_SUCCESS) {
+      if (hash_from_kernel_stext(0) != P_LKRG_SUCCESS) {
          p_print_log(P_LKRG_CRIT,
             "CPU OFFLINE ERROR: CANNOT GET HASH FROM _STEXT!\n");
       }
@@ -332,6 +335,7 @@ int p_cpu_dead_action(unsigned int p_cpu) {
    /* God mode off ;) */
 //   spin_unlock_irqrestore(&p_db_lock,p_db_flags);
    spin_unlock(&p_db_lock);
+   p_text_section_unlock();
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
    /* unlock KOBJ activities */
    mutex_unlock(p_kernfs_mutex);
