@@ -10,6 +10,7 @@ export CFLAGS="$CFLAGS"
 P_OUTPUT = output
 P_PWD = $(shell pwd)
 P_KVER = $(shell uname -r)
+P_KERNEL := /lib/modules/$(P_KVER)/build
 
 obj-m += p_lkrg.o
 p_lkrg-objs += src/modules/ksyms/p_resolve_ksym.o \
@@ -20,6 +21,8 @@ p_lkrg-objs += src/modules/ksyms/p_resolve_ksym.o \
                src/modules/kmod/p_kmod.o \
                src/modules/database/CPU.o \
                src/modules/database/arch/x86/IDT_MSR_CRx.o \
+               src/modules/database/arch/x86/p_switch_idt/p_switch_idt.o \
+               src/modules/database/arch/p_arch_metadata.o \
                src/modules/database/p_database.o \
                src/modules/notifiers/p_notifiers.o \
                src/modules/self-defense/hiding/p_hiding.o \
@@ -41,7 +44,7 @@ p_lkrg-objs += src/modules/ksyms/p_resolve_ksym.o \
                src/modules/exploit_detection/syscalls/p_do_init_module/p_do_init_module.o \
                src/modules/exploit_detection/syscalls/p_sys_finit_module/p_sys_finit_module.o \
                src/modules/exploit_detection/syscalls/p_sys_delete_module/p_sys_delete_module.o \
-               src/modules/exploit_detection/syscalls/p_may_open/p_may_open.o \
+               src/modules/exploit_detection/syscalls/p_generic_permission/p_generic_permission.o \
                src/modules/exploit_detection/syscalls/p_sel_write_enforce/p_sel_write_enforce.o \
                src/modules/exploit_detection/syscalls/p_seccomp/p_seccomp.o \
                src/modules/exploit_detection/syscalls/p_sys_unshare/p_sys_unshare.o \
@@ -65,21 +68,23 @@ p_lkrg-objs += src/modules/ksyms/p_resolve_ksym.o \
                src/modules/exploit_detection/syscalls/__x32/p_x32_sys_execveat/p_x32_sys_execveat.o \
                src/modules/exploit_detection/syscalls/__x32/p_x32_sys_keyctl/p_x32_sys_keyctl.o \
                src/modules/exploit_detection/syscalls/__x32/p_x32_sys_ptrace/p_x32_sys_ptrace.o \
+               src/modules/exploit_detection/syscalls/override/p_override_creds/p_override_creds.o \
+               src/modules/exploit_detection/syscalls/override/p_revert_creds/p_revert_creds.o \
                src/modules/exploit_detection/p_exploit_detection.o \
                src/p_lkrg_main.o
 
 
 all:
-#	$(MAKE) -C /lib/modules/$(P_KVER)/build M=$(P_PWD) modules CONFIG_DEBUG_SECTION_MISMATCH=y
-	$(MAKE) -C /lib/modules/$(P_KVER)/build M=$(P_PWD) modules
+#	$(MAKE) -C $(P_KERNEL) M=$(P_PWD) modules CONFIG_DEBUG_SECTION_MISMATCH=y
+	$(MAKE) -C $(P_KERNEL) M=$(P_PWD) modules
 	mkdir -p $(P_OUTPUT)
 	cp $(P_PWD)/p_lkrg.ko $(P_OUTPUT)
 
 install:
-	$(MAKE) -C /lib/modules/$(P_KVER)/build M=$(P_PWD) modules_install
+	$(MAKE) -C $(P_KERNEL) M=$(P_PWD) modules_install
 
 clean:
-	$(MAKE) -C /lib/modules/$(P_KVER)/build M=$(P_PWD) clean
+	$(MAKE) -C $(P_KERNEL) M=$(P_PWD) clean
 	$(RM) Module.markers modules.order
 	$(RM) $(P_PWD)/src/modules/kmod/client/kmod/Module.markers
 	$(RM) $(P_PWD)/src/modules/kmod/client/kmod/modules.order
