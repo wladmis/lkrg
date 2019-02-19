@@ -8,21 +8,22 @@
 export CFLAGS="$CFLAGS"
 
 P_OUTPUT = output
-P_PWD = $(shell pwd)
-P_KVER = $(shell uname -r)
+P_PWD ?= $(shell pwd)
+P_KVER ?= $(shell uname -r)
 P_KERNEL := /lib/modules/$(P_KVER)/build
+P_BOOTUP_SCRIPT ?= scripts/bootup/lkrg-bootup.sh
 
 obj-m += p_lkrg.o
 p_lkrg-objs += src/modules/ksyms/p_resolve_ksym.o \
                src/modules/hashing/p_lkrg_fast_hash.o \
                src/modules/comm_channel/p_comm_channel.o \
-               src/modules/wrap/p_struct_wrap.o \
                src/modules/integrity_timer/p_integrity_timer.o \
                src/modules/kmod/p_kmod.o \
                src/modules/database/CPU.o \
                src/modules/database/arch/x86/IDT_MSR_CRx.o \
                src/modules/database/arch/x86/p_switch_idt/p_switch_idt.o \
                src/modules/database/arch/p_arch_metadata.o \
+               src/modules/database/JUMP_LABEL/p_arch_jump_label_transform/p_arch_jump_label_transform.o \
                src/modules/database/p_database.o \
                src/modules/notifiers/p_notifiers.o \
                src/modules/self-defense/hiding/p_hiding.o \
@@ -70,6 +71,8 @@ p_lkrg-objs += src/modules/ksyms/p_resolve_ksym.o \
                src/modules/exploit_detection/syscalls/__x32/p_x32_sys_ptrace/p_x32_sys_ptrace.o \
                src/modules/exploit_detection/syscalls/override/p_override_creds/p_override_creds.o \
                src/modules/exploit_detection/syscalls/override/p_revert_creds/p_revert_creds.o \
+               src/modules/exploit_detection/syscalls/pCFI/p_mark_inode_dirty/p_mark_inode_dirty.o \
+               src/modules/exploit_detection/syscalls/pCFI/p_schedule/p_schedule.o \
                src/modules/exploit_detection/p_exploit_detection.o \
                src/p_lkrg_main.o
 
@@ -82,6 +85,11 @@ all:
 
 install:
 	$(MAKE) -C $(P_KERNEL) M=$(P_PWD) modules_install
+	depmod -a
+	$(P_PWD)/$(P_BOOTUP_SCRIPT) install
+
+uninstall:
+	$(P_PWD)/$(P_BOOTUP_SCRIPT) uninstall
 
 clean:
 	$(MAKE) -C $(P_KERNEL) M=$(P_PWD) clean
