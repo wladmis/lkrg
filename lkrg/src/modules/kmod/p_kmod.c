@@ -34,6 +34,10 @@ struct mutex *p_kernfs_mutex = NULL;
 #endif
 struct kset **p_module_kset = NULL;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
+int (*p_ddebug_remove_module_ptr)(const char *p_name) = 0x0;
+#endif
+
 int p_kmod_init(void) {
 
    int p_ret = P_LKRG_SUCCESS;
@@ -42,31 +46,49 @@ int p_kmod_init(void) {
    p_debug_log(P_LKRG_STRONG_DBG,
           "Entering function <p_kmod_init>\n");
 
+#if defined(CONFIG_DYNAMIC_DEBUG)
    p_ddebug_tables    = (struct list_head *)p_kallsyms_lookup_name("ddebug_tables");
    p_ddebug_lock      = (struct mutex *)p_kallsyms_lookup_name("ddebug_lock");
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
+   p_ddebug_remove_module_ptr = (int(*)(const char *))p_kallsyms_lookup_name("ddebug_remove_module");
+ #endif
+#endif
+
    p_global_modules   = (struct list_head *)p_kallsyms_lookup_name("modules");
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
    p_kernfs_mutex     = (struct mutex *)p_kallsyms_lookup_name("kernfs_mutex");
 #endif
    p_module_kset      = (struct kset **)p_kallsyms_lookup_name("module_kset");
 
+
+
    // DEBUG
-   p_debug_log(P_LKRG_DBG,
-          "<p_kmod_init> p_ddebug_tables[0x%lx] p_ddebug_lock[0x%lx] "
+   p_debug_log(P_LKRG_DBG, "<p_kmod_init> "
+#if defined(CONFIG_DYNAMIC_DEBUG)
+                        "p_ddebug_tables[0x%lx] p_ddebug_lock[0x%lx] "
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
+                        "p_ddebug_remove_module_ptr[0x%p]"
+ #endif
+#endif
                         "module_mutex[0x%lx] p_global_modules[0x%p] "
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
                         "p_kernfs_mutex[0x%p] p_module_kset[0x%p]\n",
 #else
                         "p_module_kset[0x%p]\n",
 #endif
+#if defined(CONFIG_DYNAMIC_DEBUG)
                                                             (long)p_ddebug_tables,
                                                             (long)p_ddebug_lock,
-                                                            (long)&module_mutex,
-                                                             p_global_modules,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
-                                                             p_kernfs_mutex,
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
+                                                            p_ddebug_remove_module_ptr,
+ #endif
 #endif
-                                                             p_module_kset);
+                                                            (long)&module_mutex,
+                                                            p_global_modules,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
+                                                            p_kernfs_mutex,
+#endif
+                                                            p_module_kset);
 
    if (!p_global_modules) {
       p_print_log(P_LKRG_ERR,
@@ -74,6 +96,17 @@ int p_kmod_init(void) {
       p_ret = P_LKRG_GENERAL_ERROR;
       goto p_kmod_init_out;
    }
+
+#if defined(CONFIG_DYNAMIC_DEBUG)
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 1, 0)
+   if (!p_ddebug_remove_module_ptr) {
+      p_print_log(P_LKRG_ERR,
+             "KMOD error! Can't find 'ddebug_remove_module' function :( Exiting...\n");
+      p_ret = P_LKRG_GENERAL_ERROR;
+      goto p_kmod_init_out;
+   }
+ #endif
+#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
    if (!p_kernfs_mutex) {
@@ -124,8 +157,10 @@ unsigned int p_count_modules_from_module_list(void) {
       if (p_mod->state != MODULE_STATE_LIVE)
          continue;
 
+/*
       if (p_mod == p_find_me)
          continue;
+*/
 
       if (!p_module_core(p_mod) || !p_core_text_size(p_mod))
          continue;
@@ -167,8 +202,10 @@ int p_list_from_module_list(p_module_list_mem *p_arg, char p_flag) {
       if (p_mod->state != MODULE_STATE_LIVE)
          continue;
 
+/*
       if (p_mod == p_find_me)
          continue;
+*/
 
       if (!p_module_core(p_mod) || !p_core_text_size(p_mod))
          continue;
@@ -250,9 +287,11 @@ unsigned int p_count_modules_from_sysfs_kobj(void) {
          continue;
       }
 
+/*
       if (p_mod == p_find_me) {
          continue;
       }
+*/
 
       if (!p_module_core(p_mod) || !p_core_text_size(p_mod)) {
          continue;
@@ -317,9 +356,11 @@ int p_list_from_sysfs_kobj(p_module_kobj_mem *p_arg) {
          continue;
       }
 
+/*
       if (p_mod == p_find_me) {
          continue;
       }
+*/
 
       if (!p_module_core(p_mod) || !p_core_text_size(p_mod)) {
          continue;
@@ -581,8 +622,15 @@ int p_kmod_hash(unsigned int *p_module_list_cnt_arg, p_module_list_mem **p_mlm_t
          memset(*p_mkm_tmp,0x0,sizeof(p_module_kobj_mem) * *p_module_kobj_cnt_arg);
       }
    } else {
-      *p_mlm_tmp = NULL;
-      *p_mkm_tmp = NULL;
+
+      if (*p_mlm_tmp) {
+         kzfree(*p_mlm_tmp);
+         *p_mlm_tmp = NULL;
+      }
+      if (*p_mkm_tmp) {
+         kzfree(*p_mkm_tmp);
+         *p_mkm_tmp = NULL;
+      }
       goto p_kmod_hash_err;
    }
 

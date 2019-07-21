@@ -5,13 +5,17 @@
 #  - Adam 'pi3' Zabrocki (http://pi3.com.pl)
 ##
 
-export CFLAGS="$CFLAGS"
-
 P_OUTPUT = output
 P_PWD ?= $(shell pwd)
 P_KVER ?= $(shell uname -r)
 P_KERNEL := /lib/modules/$(P_KVER)/build
 P_BOOTUP_SCRIPT ?= scripts/bootup/lkrg-bootup.sh
+
+#
+# Uncomment for debug compilation
+#
+# ccflags-m := -ggdb
+# ccflags-y := ${ccflags-m}
 
 obj-m += p_lkrg.o
 p_lkrg-objs += src/modules/ksyms/p_resolve_ksym.o \
@@ -20,8 +24,9 @@ p_lkrg-objs += src/modules/ksyms/p_resolve_ksym.o \
                src/modules/integrity_timer/p_integrity_timer.o \
                src/modules/kmod/p_kmod.o \
                src/modules/database/CPU.o \
-               src/modules/database/arch/x86/IDT_MSR_CRx.o \
+               src/modules/database/arch/x86/p_x86_metadata.o \
                src/modules/database/arch/x86/p_switch_idt/p_switch_idt.o \
+               src/modules/database/arch/arm64/p_arm64_metadata.o \
                src/modules/database/arch/p_arch_metadata.o \
                src/modules/database/JUMP_LABEL/p_arch_jump_label_transform/p_arch_jump_label_transform.o \
                src/modules/database/p_database.o \
@@ -31,8 +36,9 @@ p_lkrg-objs += src/modules/ksyms/p_resolve_ksym.o \
                src/modules/exploit_detection/syscalls/p_sys_execve/p_sys_execve.o \
                src/modules/exploit_detection/syscalls/p_sys_execveat/p_sys_execveat.o \
                src/modules/exploit_detection/syscalls/p_call_usermodehelper/p_call_usermodehelper.o \
+               src/modules/exploit_detection/syscalls/p_call_usermodehelper_exec/p_call_usermodehelper_exec.o \
                src/modules/exploit_detection/syscalls/p_do_exit/p_do_exit.o \
-               src/modules/exploit_detection/syscalls/p_do_fork/p_do_fork.o \
+               src/modules/exploit_detection/syscalls/p_wake_up_new_task/p_wake_up_new_task.o \
                src/modules/exploit_detection/syscalls/p_sys_setuid/p_sys_setuid.o \
                src/modules/exploit_detection/syscalls/p_sys_setreuid/p_sys_setreuid.o \
                src/modules/exploit_detection/syscalls/p_sys_setresuid/p_sys_setresuid.o \
@@ -71,8 +77,11 @@ p_lkrg-objs += src/modules/ksyms/p_resolve_ksym.o \
                src/modules/exploit_detection/syscalls/__x32/p_x32_sys_ptrace/p_x32_sys_ptrace.o \
                src/modules/exploit_detection/syscalls/override/p_override_creds/p_override_creds.o \
                src/modules/exploit_detection/syscalls/override/p_revert_creds/p_revert_creds.o \
+               src/modules/exploit_detection/syscalls/override/overlayfs/p_ovl_create_or_link/p_ovl_create_or_link.o \
                src/modules/exploit_detection/syscalls/pCFI/p_mark_inode_dirty/p_mark_inode_dirty.o \
                src/modules/exploit_detection/syscalls/pCFI/p_schedule/p_schedule.o \
+               src/modules/exploit_detection/syscalls/pCFI/p___queue_work/p___queue_work.o \
+               src/modules/exploit_detection/syscalls/pCFI/p_lookup_fast/p_lookup_fast.o \
                src/modules/exploit_detection/p_exploit_detection.o \
                src/p_lkrg_main.o
 

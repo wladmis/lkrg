@@ -47,14 +47,15 @@ do {                                                                       \
 } while(0)
 */
 
+#if defined(CONFIG_DYNAMIC_DEBUG)
 #define P_HIDE_FROM_DDEBUG(p_arg)                                          \
 do {                                                                       \
    p_debug_log(P_LKRG_DBG,                                                 \
        "Deleting ddebug information for module [%s]\n",                    \
                                               p_arg->name);                \
-   ddebug_remove_module(p_arg->name);                                      \
+   p_ddebug_remove_module(p_arg->name);                                    \
 } while(0)
-
+#endif
 
 #ifdef P_LKRG_UNHIDE   // (p_find_me, p_global_modules)
 

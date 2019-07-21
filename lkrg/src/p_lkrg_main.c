@@ -22,6 +22,9 @@ unsigned int p_init_log_level = 1;
 static enum cpuhp_state p_hot_cpus;
 #endif
 
+int (*p_freeze_processes)(void) = 0x0;
+void (*p_thaw_processes)(void) = 0x0;
+
 /*
  * Main entry point for the module - initialization.
  */
@@ -59,6 +62,29 @@ static int __init p_lkrg_register(void) {
                "kallsyms_lookup_name() => 0x%lx\n",(long)p_kallsyms_lookup_name);
      }
 #endif
+
+   p_freeze_processes = (int (*)(void))p_kallsyms_lookup_name("freeze_processes");
+
+   if (!p_freeze_processes) {
+      p_print_log(P_LKRG_ERR,
+             "ERROR: Can't find 'freeze_processes' function :( Exiting...\n");
+      p_ret = P_LKRG_GENERAL_ERROR;
+      goto p_main_error;
+   }
+
+   p_thaw_processes = (void (*)(void))p_kallsyms_lookup_name("thaw_processes");
+
+   if (!p_thaw_processes) {
+      p_print_log(P_LKRG_ERR,
+             "ERROR: Can't find 'thaw_processes' function :( Exiting...\n");
+      p_ret = P_LKRG_GENERAL_ERROR;
+      goto p_main_error;
+   }
+
+   // Freeze all non-kernel processes
+   while (p_freeze_processes())
+      schedule();
+
    /*
     * First, we need to plant *kprobes... Before DB is created!
     */
@@ -125,42 +151,67 @@ static int __init p_lkrg_register(void) {
    p_register_notifiers();
    p_lkrg_global_ctrl.p_random_events = 0x1;
 
+#ifdef CONFIG_X86
+   if (P_IS_SMEP_ENABLED(p_pcfi_CPU_flags))
+      p_lkrg_global_ctrl.p_smep_panic = 0x1;
+   else
+      p_print_log(P_LKRG_ERR,
+             "System does NOT support SMEP. LKRG can't enforece smep_panic :(\n");
+#endif
+
    mutex_lock(&module_mutex);
    if (p_lkrg_global_ctrl.p_hide_module) {
       p_hide_itself();
    }
    mutex_unlock(&module_mutex);
 
+#if defined(CONFIG_GRKERNSEC)
+   p_text_section_lock();
+   if (hash_from_kernel_stext() != P_LKRG_SUCCESS) {
+      p_print_log(P_LKRG_CRIT,
+         "CREATING DATABASE ERROR: HASH FROM _STEXT!\n");
+      p_ret = P_LKRG_GENERAL_ERROR;
+      p_text_section_unlock();
+      goto p_main_error;
+   }
+   p_text_section_unlock();
+#endif
+
    p_print_log(P_LKRG_CRIT,
           "LKRG initialized successfully!\n");
 
-   return P_LKRG_SUCCESS;
+   p_ret = P_LKRG_SUCCESS;
 
 p_main_error:
 
+   if (p_ret != P_LKRG_SUCCESS) {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,15,0)
-   if (p_cpu)
-      unregister_hotcpu_notifier(&p_cpu_notifier);
+      if (p_cpu)
+         unregister_hotcpu_notifier(&p_cpu_notifier);
 #else
-   if (p_cpu) {
-      cpu_notifier_register_begin();
-      __unregister_hotcpu_notifier(&p_cpu_notifier);
-      cpu_notifier_register_done();
-   }
+      if (p_cpu) {
+         cpu_notifier_register_begin();
+         __unregister_hotcpu_notifier(&p_cpu_notifier);
+         cpu_notifier_register_done();
+      }
 #endif
 #else
-   if (p_cpu)
-      cpuhp_remove_state_nocalls(p_hot_cpus);
+      if (p_cpu)
+         cpuhp_remove_state_nocalls(p_hot_cpus);
 #endif
 
-   p_exploit_detection_exit();
-   p_deregister_module_notifier();
-   p_offload_cache_delete();
-   if (p_db.p_IDT_MSR_CRx_array) {
-      kzfree(p_db.p_IDT_MSR_CRx_array);
-      p_db.p_IDT_MSR_CRx_array = NULL;
+      p_exploit_detection_exit();
+      p_deregister_module_notifier();
+      p_offload_cache_delete();
+      if (p_db.p_CPU_metadata_array) {
+         kzfree(p_db.p_CPU_metadata_array);
+         p_db.p_CPU_metadata_array = NULL;
+      }
    }
+
+   // Thaw all non-kernel processes
+   p_thaw_processes();
 
    return p_ret;
 }
@@ -176,6 +227,10 @@ static void __exit p_lkrg_deregister(void) {
    p_print_log(P_LKRG_DBG,
           "I should never be here! This operation probably is going to break your system! Goodbye ;)\n");
 #endif
+
+   // Freeze all non-kernel processes
+   while (p_freeze_processes())
+      schedule();
 
    del_timer(&p_timer);
    p_deregister_notifiers();
@@ -199,8 +254,11 @@ static void __exit p_lkrg_deregister(void) {
    p_offload_cache_delete();
    p_unregister_arch_metadata();
 
-   if (p_db.p_IDT_MSR_CRx_array)
-      kzfree(p_db.p_IDT_MSR_CRx_array);
+   if (p_db.p_CPU_metadata_array)
+      kzfree(p_db.p_CPU_metadata_array);
+
+   // Thaw all non-kernel processes
+   p_thaw_processes();
 
    p_print_log(P_LKRG_CRIT, "LKRG unloaded!\n");
 }
