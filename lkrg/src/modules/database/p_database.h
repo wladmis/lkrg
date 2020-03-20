@@ -84,6 +84,7 @@ typedef struct p_cpu_info {
  * Dynamic *_JUMP_LABEL support (arch independent)
  */
 #include "JUMP_LABEL/p_arch_jump_label_transform/p_arch_jump_label_transform.h"
+#include "JUMP_LABEL/p_arch_jump_label_transform_apply/p_arch_jump_label_transform_apply.h"
 
 enum p_jump_label_state {
 
@@ -101,6 +102,8 @@ struct p_jump_label {
 
    enum p_jump_label_state p_state;
    struct module *p_mod;
+   unsigned long *p_mod_mask;
+   spinlock_t p_jl_lock;
 
 };
 
@@ -158,8 +161,6 @@ typedef struct p_hash_database {
 
 
 extern p_hash_database p_db;
-extern struct mutex *p_text_mutex;
-extern struct mutex *p_jump_label_mutex;
 extern struct notifier_block p_cpu_notifier;
 
 int hash_from_ex_table(void);
@@ -171,19 +172,19 @@ static inline void p_text_section_lock(void) {
 
    //jump_label_lock();
 /*
-   mutex_lock(p_jump_label_mutex);
-   mutex_lock(p_text_mutex);
+   mutex_lock(P_SYM(p_jump_label_mutex));
+   mutex_lock(P_SYM(p_text_mutex));
 */
 
-   while (!mutex_trylock(p_jump_label_mutex))
+   while (!mutex_trylock(P_SYM(p_jump_label_mutex)))
       schedule();
-   mutex_lock(p_text_mutex);
+   mutex_lock(P_SYM(p_text_mutex));
 }
 
 static inline void p_text_section_unlock(void) {
 
-   mutex_unlock(p_text_mutex);
-   mutex_unlock(p_jump_label_mutex);
+   mutex_unlock(P_SYM(p_text_mutex));
+   mutex_unlock(P_SYM(p_jump_label_mutex));
 
 //   jump_label_unlock();
 }

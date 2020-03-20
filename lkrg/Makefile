@@ -8,8 +8,13 @@
 P_OUTPUT = output
 P_PWD ?= $(shell pwd)
 P_KVER ?= $(shell uname -r)
-P_KERNEL := /lib/modules/$(P_KVER)/build
 P_BOOTUP_SCRIPT ?= scripts/bootup/lkrg-bootup.sh
+ifneq ($(KERNELRELEASE),)
+    P_KERNEL := /lib/modules/$(KERNELRELEASE)/build
+else
+    ## KERNELRELEASE not set.
+    P_KERNEL := /lib/modules/$(P_KVER)/build
+endif
 
 #
 # Uncomment for debug compilation
@@ -27,8 +32,10 @@ p_lkrg-objs += src/modules/ksyms/p_resolve_ksym.o \
                src/modules/database/arch/x86/p_x86_metadata.o \
                src/modules/database/arch/x86/p_switch_idt/p_switch_idt.o \
                src/modules/database/arch/arm64/p_arm64_metadata.o \
+               src/modules/database/arch/arm/p_arm_metadata.o \
                src/modules/database/arch/p_arch_metadata.o \
                src/modules/database/JUMP_LABEL/p_arch_jump_label_transform/p_arch_jump_label_transform.o \
+               src/modules/database/JUMP_LABEL/p_arch_jump_label_transform_apply/p_arch_jump_label_transform_apply.o \
                src/modules/database/p_database.o \
                src/modules/notifiers/p_notifiers.o \
                src/modules/self-defense/hiding/p_hiding.o \
@@ -55,7 +62,7 @@ p_lkrg-objs += src/modules/ksyms/p_resolve_ksym.o \
                src/modules/exploit_detection/syscalls/p_sel_write_enforce/p_sel_write_enforce.o \
                src/modules/exploit_detection/syscalls/p_seccomp/p_seccomp.o \
                src/modules/exploit_detection/syscalls/p_sys_unshare/p_sys_unshare.o \
-               src/modules/exploit_detection/syscalls/p_userns_install/p_userns_install.o \
+               src/modules/exploit_detection/syscalls/p_sys_setns/p_sys_setns.o \
                src/modules/exploit_detection/syscalls/caps/p_sys_capset/p_sys_capset.o \
                src/modules/exploit_detection/syscalls/caps/p_cap_task_prctl/p_cap_task_prctl.o \
                src/modules/exploit_detection/syscalls/keyring/p_key_change_session_keyring/p_key_change_session_keyring.o \

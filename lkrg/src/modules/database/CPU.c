@@ -175,7 +175,7 @@ int p_cpu_online_action(unsigned int p_cpu) {
    mutex_lock(&module_mutex);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
    /* Hacky way of 'stopping' KOBJs activities */
-   mutex_lock(p_kernfs_mutex);
+   mutex_lock(P_SYM(p_kernfs_mutex));
 #endif
 
    spin_lock(&p_db_lock);
@@ -212,10 +212,14 @@ int p_cpu_online_action(unsigned int p_cpu) {
       }
       /* Now recalculate modules, again some macros are different now ! */
 
+      spin_lock(&p_db.p_jump_label.p_jl_lock);
+
       /* OK, now recalculate hashes again! */
       while(p_kmod_hash(&p_db.p_module_list_nr,&p_db.p_module_list_array,
                         &p_db.p_module_kobj_nr,&p_db.p_module_kobj_array, 0x2) != P_LKRG_SUCCESS)
          schedule();
+
+      spin_unlock(&p_db.p_jump_label.p_jl_lock);
 
       /* Update global module list/kobj hash */
       p_db.p_module_list_hash = p_lkrg_fast_hash((unsigned char *)p_db.p_module_list_array,
@@ -235,7 +239,7 @@ int p_cpu_online_action(unsigned int p_cpu) {
    spin_unlock(&p_db_lock);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
    /* unlock KOBJ activities */
-   mutex_unlock(p_kernfs_mutex);
+   mutex_unlock(P_SYM(p_kernfs_mutex));
 #endif
    /* Release the 'module_mutex' */
    mutex_unlock(&module_mutex);
@@ -263,7 +267,7 @@ int p_cpu_dead_action(unsigned int p_cpu) {
    mutex_lock(&module_mutex);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
    /* Hacky way of 'stopping' KOBJs activities */
-   mutex_lock(p_kernfs_mutex);
+   mutex_lock(P_SYM(p_kernfs_mutex));
 #endif
 
    spin_lock(&p_db_lock);
@@ -308,9 +312,14 @@ int p_cpu_dead_action(unsigned int p_cpu) {
       }
       /* Now recalculate modules, again some macros are different now ! */
 
+      spin_lock(&p_db.p_jump_label.p_jl_lock);
+
       /* OK, now recalculate hashes again! */
       while(p_kmod_hash(&p_db.p_module_list_nr,&p_db.p_module_list_array,
-                        &p_db.p_module_kobj_nr,&p_db.p_module_kobj_array, 0x2) != P_LKRG_SUCCESS);
+                        &p_db.p_module_kobj_nr,&p_db.p_module_kobj_array, 0x2) != P_LKRG_SUCCESS)
+         schedule();
+
+      spin_unlock(&p_db.p_jump_label.p_jl_lock);
 
       /* Update global module list/kobj hash */
       p_db.p_module_list_hash = p_lkrg_fast_hash((unsigned char *)p_db.p_module_list_array,
@@ -330,7 +339,7 @@ int p_cpu_dead_action(unsigned int p_cpu) {
    spin_unlock(&p_db_lock);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
    /* unlock KOBJ activities */
-   mutex_unlock(p_kernfs_mutex);
+   mutex_unlock(P_SYM(p_kernfs_mutex));
 #endif
    /* Release the 'module_mutex' */
    mutex_unlock(&module_mutex);

@@ -78,6 +78,7 @@ typedef struct p_CPU_metadata_hash_mem {
    /*
     * Now MSRs...
     */
+   char       p_MSR_marker;
 
    /* x86 critical MSRs */
    u64        p_MSR_IA32_SYSENTER_CS;        // 0x00000174
@@ -85,7 +86,7 @@ typedef struct p_CPU_metadata_hash_mem {
    u64        p_MSR_IA32_SYSENTER_EIP;       // 0x00000176
 
    /* MSR PAT */
-   u64        p_MSR_IA32_CR_PAT;             // 0x00000277
+//   u64        p_MSR_IA32_CR_PAT;             // 0x00000277
 
    /* MSR APIC */
    u64        p_MSR_IA32_APICBASE;           // 0x0000001b

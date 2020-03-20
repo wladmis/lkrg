@@ -26,6 +26,12 @@
 #include "x86/p_x86_metadata.h"
 #include "x86/p_switch_idt/p_switch_idt.h"
 
+#elif defined(CONFIG_ARM)
+/*
+ * ARM CPU specific data
+ */
+#include "arm/p_arm_metadata.h"
+
 #elif defined(CONFIG_ARM64)
 /*
  * ARM64 CPU specific data
@@ -38,7 +44,5 @@ extern void p_dump_CPU_metadata(void *_p_arg);
 
 int p_register_arch_metadata(void);
 int p_unregister_arch_metadata(void);
-
-extern int (*p_core_kernel_text)(unsigned long p_addr);
 
 #endif

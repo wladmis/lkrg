@@ -29,6 +29,7 @@ do {                                         \
    } while(!y && p_tmp--);                   \
 } while(0)
 
+
 #ifdef CONFIG_X86_64
  #define P_MSR_ASM_RET(val, low, high)     (((u64)(high) << 32) | (low))
  #define P_MSR_ASM_READ(val, low, high)     "=a" (low), "=d" (high)

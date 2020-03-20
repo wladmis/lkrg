@@ -3,21 +3,21 @@
  *
  * Component:
  *  - Database module
- *    => Submodule - ARM64 specific metadata
+ *    => Submodule - ARM specific metadata
  *
  * Notes:
  *  - None
  *
  * Timeline:
- *  - Created: 05.IV.2019
+ *  - Created: 09.X.2019
  *
  * Author:
  *  - Adam 'pi3' Zabrocki (http://pi3.com.pl)
  *
  */
 
-#ifndef P_LKRG_ARM64_METADATA_H
-#define P_LKRG_ARM64_METADATA_H
+#ifndef P_LKRG_ARM_METADATA_H
+#define P_LKRG_ARM_METADATA_H
 
 /*
  * Each CPU in the system independetly dump own critical data and save it using
@@ -36,7 +36,7 @@ typedef struct p_CPU_metadata_hash_mem {
 
 } p_CPU_metadata_hash_mem;
 
-void p_dump_arm64_metadata(void *_p_arg);
-//void p_dump_arm64_metadata(p_CPU_metadata_hash_mem *p_arg);
+void p_dump_arm_metadata(void *_p_arg);
+//void p_dump_arm_metadata(p_CPU_metadata_hash_mem *p_arg);
 
 #endif

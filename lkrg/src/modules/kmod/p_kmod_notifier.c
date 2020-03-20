@@ -38,7 +38,7 @@ static void p_module_notifier_wrapper(unsigned long p_event, struct module *p_km
    p_debug_log(P_LKRG_STRONG_DBG,
           "Entering function <p_module_notifier_wrapper>\n");
 
-   if (p_lkrg_global_ctrl.p_block_modules) {
+   if (P_CTRL(p_block_modules)) {
       p_kmod->init = p_block_always;
    }
 
@@ -76,11 +76,13 @@ static int p_module_event_notifier(struct notifier_block *p_this, unsigned long 
 
 // STRONG_DEBUG
    p_debug_log(P_LKRG_STRONG_DBG,
-               "[%ld | %s] "
-               "Entering function <p_module_event_notifier> "
-               "m[0x%p] hd[0x%p] s[0x%p] n[0x%p]\n",
-               p_event,p_mod_strings[p_event],p_tmp,p_tmp->holders_dir,
-               p_tmp->sect_attrs,p_tmp->notes_attrs);
+               "[%ld | %s] Entering function <p_module_event_notifier> m[0x%lx] hd[0x%lx] s[0x%lx] n[0x%lx]\n",
+               p_event,
+               p_mod_strings[p_event],
+               (unsigned long)p_tmp,
+               (unsigned long)p_tmp->holders_dir,
+               (unsigned long)p_tmp->sect_attrs,
+               (unsigned long)p_tmp->notes_attrs);
 
    /* Inform validation routine about active module activities... */
    mutex_lock(&p_module_activity);
@@ -88,7 +90,10 @@ static int p_module_event_notifier(struct notifier_block *p_this, unsigned long 
 
 // DEBUG
    p_debug_log(P_LKRG_DBG,
-          "<p_module_event_notifier> !! Module activity detected [<%s>] %lu: 0x%p\n",p_mod_strings[p_event],p_event,p_kmod);
+          "<p_module_event_notifier> !! Module activity detected [<%s>] %lu: 0x%lx\n",
+          p_mod_strings[p_event],
+          p_event,
+          (unsigned long)p_kmod);
 
    /*
     * If module going away, we need to rebuild our database anyway
@@ -111,12 +116,18 @@ static int p_module_event_notifier(struct notifier_block *p_this, unsigned long 
        * We must keep in track that information ;)
        */
 
+p_module_event_notifier_going_retry:
+
       p_text_section_lock();
       /* We are heavily consuming module list here - take 'module_mutex' */
-      mutex_lock(&module_mutex);
+//      mutex_lock(&module_mutex);
+      while (!mutex_trylock(&module_mutex)) {
+         p_text_section_unlock();
+         goto  p_module_event_notifier_going_retry;
+      }
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
       /* Hacky way of 'stopping' KOBJs activities */
-      mutex_lock(p_kernfs_mutex);
+      mutex_lock(P_SYM(p_kernfs_mutex));
 #endif
 
       /*
@@ -140,10 +151,14 @@ static int p_module_event_notifier(struct notifier_block *p_this, unsigned long 
 //      spin_lock_irqsave(&p_db_lock,p_db_flags);
       spin_lock(&p_db_lock);
 
+      spin_lock(&p_db.p_jump_label.p_jl_lock);
+
       /* OK, now recalculate hashes again! */
       while(p_kmod_hash(&p_db.p_module_list_nr,&p_db.p_module_list_array,
                         &p_db.p_module_kobj_nr,&p_db.p_module_kobj_array, 0x2) != P_LKRG_SUCCESS)
          schedule();
+
+      spin_unlock(&p_db.p_jump_label.p_jl_lock);
 
       /* Update global module list/kobj hash */
       p_db.p_module_list_hash = p_lkrg_fast_hash((unsigned char *)p_db.p_module_list_array,
@@ -156,10 +171,16 @@ static int p_module_event_notifier(struct notifier_block *p_this, unsigned long 
       p_print_log(P_LKRG_INFO,"Hash from 'module list' => [0x%llx]\n",p_db.p_module_list_hash);
       p_print_log(P_LKRG_INFO,"Hash from 'module kobj(s)' => [0x%llx]\n",p_db.p_module_kobj_hash);
 
+      if (hash_from_kernel_stext() != P_LKRG_SUCCESS) {
+         p_print_log(P_LKRG_CRIT,
+            "[module_notifier:%s] Can't recalculate hash from _STEXT!\n",p_mod_strings[p_event]);
+      }
+      p_print_log(P_LKRG_INFO,"Hash from '_stext' => [0x%llx]\n",p_db.kernel_stext.p_hash);
+
       goto p_module_event_notifier_unlock_out;
    }
 
-   if (p_lkrg_global_ctrl.p_block_modules) {
+   if (P_CTRL(p_block_modules) && p_tmp != P_SYM(p_find_me)) {
 //      if (p_tmp->state == MODULE_STATE_COMING) { <- Linux kernel bug - might not update state value :(
       if (p_event == MODULE_STATE_COMING) {
          /* We are not going to modify DB */
@@ -181,13 +202,18 @@ static int p_module_event_notifier(struct notifier_block *p_this, unsigned long 
           * and recalculate global module hashes...
           */
 
+p_module_event_notifier_live_retry:
+
          p_text_section_lock();
          /* We are heavily consuming module list here - take 'module_mutex' */
-         mutex_lock(&module_mutex);
-
+         //mutex_lock(&module_mutex);
+         while (!mutex_trylock(&module_mutex)) {
+            p_text_section_unlock();
+            goto  p_module_event_notifier_live_retry;
+         }
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
          /* Hacky way of 'stopping' KOBJs activities */
-         mutex_lock(p_kernfs_mutex);
+         mutex_lock(P_SYM(p_kernfs_mutex));
 #endif
 
          /*
@@ -209,10 +235,14 @@ static int p_module_event_notifier(struct notifier_block *p_this, unsigned long 
 //         spin_lock_irqsave(&p_db_lock,p_db_flags);
          spin_lock(&p_db_lock);
 
+         spin_lock(&p_db.p_jump_label.p_jl_lock);
+
          /* OK, now recalculate hashes again! */
          while(p_kmod_hash(&p_db.p_module_list_nr,&p_db.p_module_list_array,
                            &p_db.p_module_kobj_nr,&p_db.p_module_kobj_array, 0x2) != P_LKRG_SUCCESS)
             schedule();
+
+         spin_unlock(&p_db.p_jump_label.p_jl_lock);
 
          /* Update global module list/kobj hash */
          p_db.p_module_list_hash = p_lkrg_fast_hash((unsigned char *)p_db.p_module_list_array,
@@ -224,6 +254,12 @@ static int p_module_event_notifier(struct notifier_block *p_this, unsigned long 
 
          p_print_log(P_LKRG_INFO,"Hash from 'module list' => [0x%llx]\n",p_db.p_module_list_hash);
          p_print_log(P_LKRG_INFO,"Hash from 'module kobj(s)' => [0x%llx]\n",p_db.p_module_kobj_hash);
+
+         if (hash_from_kernel_stext() != P_LKRG_SUCCESS) {
+            p_print_log(P_LKRG_CRIT,
+               "[module_notifier:%s] Can't recalculate hash from _STEXT!\n",p_mod_strings[p_event]);
+         }
+         p_print_log(P_LKRG_INFO,"Hash from '_stext' => [0x%llx]\n",p_db.kernel_stext.p_hash);
 
          goto p_module_event_notifier_unlock_out;
       }
@@ -238,7 +274,7 @@ p_module_event_notifier_unlock_out:
    spin_unlock(&p_db_lock);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
    /* unlock KOBJ activities */
-   mutex_unlock(p_kernfs_mutex);
+   mutex_unlock(P_SYM(p_kernfs_mutex));
 #endif
    /* Release the 'module_mutex' */
    mutex_unlock(&module_mutex);
@@ -278,5 +314,19 @@ void p_register_module_notifier(void) {
 void p_deregister_module_notifier(void) {
 
    unregister_module_notifier(&p_module_block_notifier);
+
+   if (p_db.p_module_list_array) {
+      kzfree(p_db.p_module_list_array);
+      p_db.p_module_list_array = NULL;
+   }
+   if (p_db.p_module_kobj_array) {
+      kzfree(p_db.p_module_kobj_array);
+      p_db.p_module_kobj_array = NULL;
+   }
+   if (p_db.p_jump_label.p_mod_mask) {
+      kfree(p_db.p_jump_label.p_mod_mask);
+      p_db.p_jump_label.p_mod_mask = NULL;
+   }
+
 //   printk("Goodbye ;)\n");
 }
