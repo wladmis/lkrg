@@ -1,1 +1,1 @@
-tar: upstream/master:. name=lkrg-@version@
+tar: master:. name=lkrg-@version@
