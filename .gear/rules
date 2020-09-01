@@ -1,1 +1,1 @@
-tar: lkrg
+tar: main:. name=lkrg-@version@ base=lkrg-@version@
