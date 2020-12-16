@@ -1,1 +1,2 @@
 tar: main:. name=lkrg-@version@ base=lkrg-@version@
+diff: main:. alt:. name=lkrg-@version@-@release@.patch
