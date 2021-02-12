@@ -14,7 +14,7 @@ Url:  https://www.openwall.com/lkrg/
 VCS: https://github.com/openwall/lkrg.git
 Source: %module_name-%version.tar
 
-ExclusiveArch: i586 x86_64 aarch64
+ExclusiveArch: aarch64 armh %ix86 x86_64
 BuildRequires(pre): rpm-build-kernel
 %{?!_without_check:%{?!_disable_check:BuildRequires: kernel-headers-modules-un-def}}
 BuildArch: noarch
