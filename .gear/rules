@@ -1,1 +1,2 @@
-tar: 8a3aaa6:. name=lkrg-@version@ base=lkrg-@version@
+tar: abaca2f:. name=lkrg-@version@ base=lkrg-@version@
+diff: abaca2f:. da9c7f4:. name=lkrg-@version@-@release@.patch
