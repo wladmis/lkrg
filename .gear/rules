@@ -1,2 +1,1 @@
-tar: abaca2f:. name=lkrg-@version@ base=lkrg-@version@
-diff: abaca2f:. da9c7f4:. name=lkrg-@version@-@release@.patch
+tar: v0.9.0:. name=lkrg-@version@ base=lkrg-@version@
