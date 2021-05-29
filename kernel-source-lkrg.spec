@@ -1,9 +1,9 @@
 %define module_name lkrg
-%define module_version 0.9.1.0.6.gita516ef4
+%define module_version 0.9.1.0.8.git0fba5fe
 
 Name: kernel-source-lkrg
 Version: %module_version
-Release: alt2
+Release: alt1
 
 Summary:  Linux Kernel Runtime Guard module sources
 
@@ -73,6 +73,9 @@ done
 %config(noreplace) %_sysconfdir/sysctl.d/lkrg.conf
 
 %changelog
+* Sat May 29 2021 Vladimir D. Seleznev <vseleznv@altlinux.org> 0.9.1.0.8.git0fba5fe-alt1
+- Updated to v0.9.1-8-g0fba5fe.
+
 * Thu May 27 2021 Vladimir D. Seleznev <vseleznv@altlinux.org> 0.9.1.0.6.gita516ef4-alt2
 - Added lkrg-config subpackage.
 
