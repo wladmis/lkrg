@@ -1,1 +1,2 @@
 tar: v0.9.1-25-ga9906a6:. name=lkrg-@version@ base=lkrg-@version@
+copy: lkrg.init
