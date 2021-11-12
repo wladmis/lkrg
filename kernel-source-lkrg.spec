@@ -1,5 +1,5 @@
 %define module_name lkrg
-%define module_version 0.9.1.0.25.gita9906a6
+%define module_version 0.9.1.0.27.gitabd8719
 
 Name: kernel-source-lkrg
 Version: %module_version
@@ -14,6 +14,7 @@ Url:  https://www.openwall.com/lkrg/
 VCS: https://github.com/openwall/lkrg.git
 Source: %module_name-%version.tar
 Source1: %module_name.init
+Patch: %name-%version-%release.patch
 
 ExclusiveArch: aarch64 armh %ix86 x86_64
 BuildRequires(pre): rpm-build-kernel
@@ -56,6 +57,9 @@ This package contains a common files fo Linux Kernel Runtime Guard.
 %prep
 %setup -q -c
 cp -a %SOURCE1 .
+pushd %module_name-%version
+%patch -p1
+popd
 
 %install
 mkdir -p %kernel_srcdir
@@ -64,7 +68,7 @@ mkdir -p %buildroot%_sysconfdir/sysctl.d
 cp -a %module_name-%version/scripts/bootup/lkrg.conf %buildroot%_sysconfdir/sysctl.d/lkrg.conf
 
 mkdir -p %buildroot%_initdir
-cp -a lkrg.init %buildroot%_initdir/lkrg
+install -pm755 lkrg.init %buildroot%_initdir/lkrg
 
 mkdir -p %buildroot%_unitdir
 cat <<EOF >%buildroot%_unitdir/lkrg.service
@@ -115,6 +119,11 @@ done
 %_presetdir/30-lkrg.preset
 
 %changelog
+* Fri Nov 12 2021 Vladimir D. Seleznev <vseleznv@altlinux.org> 0.9.1.0.27.gitabd8719-alt1
+- Updated to v0.9.1-27-gabd8719.
+- Fixed FTBFS with kernel 5.15 on armh.
+- lkrg-common: renamed from lkrg-config, added init and service files.
+
 * Thu Oct 21 2021 Vladimir D. Seleznev <vseleznv@altlinux.org> 0.9.1.0.25.gita9906a6-alt1
 - Updated to v0.9.1-25-ga9906a6.
 
