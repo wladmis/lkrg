@@ -52,7 +52,7 @@ detection). For process credentials, LKRG attempts to detect the exploit and
 take action before the kernel would grant the process access (such as open a
 file) based on the unauthorized credentials.
 
-This package contains a common files fo Linux Kernel Runtime Guard.
+This package contains common files fo Linux Kernel Runtime Guard.
 
 %prep
 %setup -q -c
