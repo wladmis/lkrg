@@ -1,2 +1,2 @@
-tar: v0.9.1-34-g0270c95:. name=lkrg-@version@ base=lkrg-@version@
+tar: v@version@:. name=lkrg-@version@ base=lkrg-@version@
 copy: lkrg.init
