@@ -4,7 +4,7 @@
 #
 # chkconfig: 2345 01 99
 # description: Linux Kernel Runtime Guard
-# config: /etc/sysctl.d/lkrg.conf
+# config: /etc/lkrg.conf
 
 # Do not load RH compatibility interface.
 WITHOUT_RC_COMPAT=1
@@ -13,7 +13,8 @@ WITHOUT_RC_COMPAT=1
 . /etc/init.d/functions
 
 NAME="Linux Kernel Runtime Guard"
-CONFIG="/etc/sysctl.d/lkrg.conf"
+CONFIG="/etc/lkrg.conf"
+LOCKFILE="/run/lock/subsys/lkrg"
 RETVAL=0
 
 check_running()
@@ -26,12 +27,25 @@ check_nolkrg()
 	grep -qw nolkrg /proc/cmdline
 }
 
+adjust()
+{
+	RETVAL=0
+	if [ -f "$CONFIG" ]; then
+		action "Adjusting kernel parameters for $NAME" \
+			sysctl -p "$CONFIG"
+		RETVAL=$?
+	fi
+
+	return $RETVAL
+}
+
 start()
 {
-	if check_running; then
+	if [ -e "$LOCKFILE" ] && check_running; then
 		msg_already_running "$NAME"
 		echo
-		exit 0
+		RETVAL=0
+		return $RETVAL
 	fi
 
 	if [ "${1-}" != "force" ] && check_nolkrg; then
@@ -41,28 +55,36 @@ start()
 		return $RETVAL
 	fi
 
-	if ! modinfo p_lkrg 2>/dev/null; then
+	if ! modinfo p_lkrg >/dev/null; then
 		echo "$NAME: Linux Kernel Runtime Guard kernel module is not installed"
 		RETVAL=1
 		return $RETVAL
 	fi
 
-	msg_starting "$NAME"
-	modprobe p_lkrg
-	RETVAL=$?
+	RETVAL=0
+	echo "Checking whether $NAME is already loaded"
+	if check_running; then
+		echo "$NAME is already loaded, skipping that part"
+	else
+		msg_starting "$NAME"
 
-	if [ "$RETVAL" -eq 0 ] && [ -f "$CONFIG" ]; then
-		sysctl -p "$CONFIG" ||
-			echo 'WARNING: could not set settings'
+		modprobe p_lkrg
+		RETVAL=$?
+
+		if [ "$RETVAL" -eq 0 ]; then
+			success "$NAME startup"
+		else
+			failure "$NAME startup"
+		fi
 	fi
 
 	if [ "$RETVAL" -eq 0 ]; then
-		success "$NAME startup"
-	else
-		failure "$NAME startup"
+		# Adjust message should not erase success message
+		echo
+		adjust
+		RETVAL=$?
+		touch "$LOCKFILE"
 	fi
-
-	echo
 
 	return $RETVAL
 }
@@ -72,7 +94,9 @@ stop()
 	if ! check_running; then
 		msg_not_running "$NAME"
 		echo
-		exit 0
+		rm -f "$LOCKFILE"
+		RETVAL=0
+		return $RETVAL
 	fi
 
 	msg_stopping "$NAME"
@@ -81,11 +105,10 @@ stop()
 
 	if [ "$RETVAL" -eq 0 ]; then
 		success "$NAME stopping"
+		rm -f "$LOCKFILE"
 	else
 		failure "$NAME stopping"
 	fi
-
-	echo
 
 	return $RETVAL
 }
@@ -103,7 +126,13 @@ restart()
 
 reload()
 {
-	restart
+	if ! check_running; then
+		msg_not_running "$NAME"
+		RETVAL=0
+		return $RETVAL
+	fi
+
+	adjust
 }
 
 # See how we were called.
@@ -136,11 +165,25 @@ case "$1" in
 	condreload)
 		if check_running; then
 			reload
+			test -e "$LOCKFILE" || touch "$LOCKFILE"
 		fi
 		;;
 	status)
 		check_running
 		RETVAL=$?
+		if [ "$RETVAL" = 0 ]; then
+			if [ -e "$LOCKFILE" ]; then
+				echo "$NAME is running"
+			else
+				echo "$NAME is running, but service has not been started"
+			fi
+		else
+			if [ -e "$LOCKFILE" ]; then
+				echo "$NAME is not running, but subsystem is locked"
+			else
+				echo "$NAME is stopped"
+			fi
+		fi
 		;;
 	*)
 		msg_usage "${0##*/} {start|force-start|stop|reload|restart|condstop|condrestart|condreload|status}"
