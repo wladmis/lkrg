@@ -49,9 +49,8 @@ start()
 		return $RETVAL
 	fi
 
-	if [ "${1-}" != "force" ] && check_nolkrg; then
+	if check_nolkrg; then
 		echo "$NAME: nolkrg kernel parameter passed, do not load"
-		echo "To force service start use force-start command"
 		RETVAL=1
 		return $RETVAL
 	fi
@@ -117,13 +116,8 @@ stop()
 
 restart()
 {
-	force=
-	if check_running; then
-		force=force
-	fi
-
 	stop
-	start $force
+	start
 }
 
 reload()
@@ -141,9 +135,6 @@ reload()
 case "$1" in
 	start)
 		start
-		;;
-	force-start)
-		start force
 		;;
 	stop)
 		stop
@@ -188,7 +179,7 @@ case "$1" in
 		fi
 		;;
 	*)
-		msg_usage "${0##*/} {start|force-start|stop|reload|restart|condstop|condrestart|condreload|status}"
+		msg_usage "${0##*/} {start|stop|reload|restart|condstop|condrestart|condreload|status}"
 		RETVAL=1
 esac
 
