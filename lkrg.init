@@ -19,7 +19,8 @@ RETVAL=0
 
 check_running()
 {
-	grep -qw p_lkrg /proc/modules
+	sysctl lkrg.hide >/dev/null 2>&1 ||
+		return 1
 }
 
 check_nolkrg()
@@ -100,6 +101,7 @@ stop()
 	fi
 
 	msg_stopping "$NAME"
+	sysctl lkrg.hide=0
 	modprobe -r p_lkrg
 	RETVAL=$?
 
