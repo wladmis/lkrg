@@ -28,6 +28,21 @@ check_nolkrg()
 	grep -qw nolkrg /proc/cmdline
 }
 
+get_modname()
+{
+	if modinfo p_lkrg >/dev/null 2>&1; then
+		MODNAME=p_lkrg
+		return 0
+	fi
+
+	if modinfo lkrg >/dev/null 2>&1; then
+		MODNAME=lkrg
+		return 0
+	fi
+
+	return 1
+}
+
 adjust()
 {
 	RETVAL=0
@@ -55,7 +70,10 @@ start()
 		return $RETVAL
 	fi
 
-	if ! modinfo p_lkrg >/dev/null; then
+	get_modname
+	rc=$?
+
+	if [ "$rc" -ne 0 ]; then
 		echo "$NAME: Linux Kernel Runtime Guard kernel module is not installed"
 		RETVAL=1
 		return $RETVAL
@@ -68,7 +86,7 @@ start()
 	else
 		msg_starting "$NAME"
 
-		modprobe p_lkrg
+		modprobe "$MODNAME"
 		RETVAL=$?
 
 		if [ "$RETVAL" -eq 0 ]; then
@@ -99,9 +117,11 @@ stop()
 		return $RETVAL
 	fi
 
+	get_modname
+
 	msg_stopping "$NAME"
 	sysctl lkrg.hide=0
-	modprobe -r p_lkrg
+	modprobe -r "$MODNAME"
 	RETVAL=$?
 
 	if [ "$RETVAL" -eq 0 ]; then
