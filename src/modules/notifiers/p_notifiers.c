@@ -123,7 +123,8 @@ void p_register_notifiers(void) {
    register_inet6addr_notifier(&p_inet6addr_notifier_nb);
 #endif
    register_inetaddr_notifier(&p_inetaddr_notifier_nb);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5,16,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,16,0) \
+   && (!defined(RHEL_RELEASE_CODE) || (RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(9, 0)))
    task_handoff_register(&p_taskfree_notifier_nb);
    profile_event_register(PROFILE_TASK_EXIT, &p_profile_event_exit_notifier_nb);
    profile_event_register(PROFILE_MUNMAP, &p_profile_event_munmap_notifier_nb);
@@ -260,7 +261,8 @@ void p_deregister_notifiers(void) {
    unregister_inet6addr_notifier(&p_inet6addr_notifier_nb);
 #endif
    unregister_inetaddr_notifier(&p_inetaddr_notifier_nb);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5,16,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,16,0) \
+   && (!defined(RHEL_RELEASE_CODE) || (RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(9, 0)))
    task_handoff_unregister(&p_taskfree_notifier_nb);
    profile_event_unregister(PROFILE_TASK_EXIT, &p_profile_event_exit_notifier_nb);
    profile_event_unregister(PROFILE_MUNMAP, &p_profile_event_munmap_notifier_nb);
